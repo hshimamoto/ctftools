@@ -1,0 +1,3 @@
+- [$Hell on Sony Snatch the Kernel privilage from Browser](https://speakerdeck.com/rkx1209/hell-on-sony-snatch-the-kernel-privilage-from-browser)
+- [RKX1209 CVE-2014-1303 PoC for Linux](https://github.com/RKX1209/CVE-2014-1303)
+- [Liang Chen, WEBKIT EVERYWHERE: SECURE OR NOT?](https://www.blackhat.com/docs/eu-14/materials/eu-14-Chen-WebKit-Everywhere-Secure-Or-Not.PDF)
