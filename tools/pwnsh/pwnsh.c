@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <errno.h>
 
@@ -41,7 +42,30 @@ int rw(int r, int w)
 	return len;
 }
 
-int shell(int r, int w, int in, int out)
+int control(int cnt)
+{
+	char buf[4096];
+	int len = read(cnt, buf, 4096);
+
+	if (len <= 0)
+		return -1;
+
+	// this message should be info
+	char msg[4096 + 8];
+	char *ptr, *lf;
+
+	ptr = buf;
+	while ((lf = strstr(ptr, "\n"))) {
+		*lf = '\0';
+		snprintf(msg, 4096 + 8, "[i] %s\n", ptr);
+		write(2, msg, strlen(msg));
+		ptr = lf + 1;
+	}
+
+	return 0;
+}
+
+int shell(int r, int w, int in, int out, int cnt)
 {
 	int max;
 	char buf[4096];
@@ -53,6 +77,8 @@ int shell(int r, int w, int in, int out)
 		max = in;
 	if (max < out)
 		max = out;
+	if (max < cnt)
+		max = cnt;
 	max++;
 
 	for (;;) {
@@ -61,6 +87,8 @@ int shell(int r, int w, int in, int out)
 		FD_ZERO(&fds);
 		FD_SET(r, &fds);
 		FD_SET(in, &fds);
+		if (cnt > 0)
+			FD_SET(cnt, &fds);
 
 		int ret = select(max, &fds, NULL, NULL, NULL);
 
@@ -78,18 +106,26 @@ int shell(int r, int w, int in, int out)
 			if (rw(r, out) == -1)
 				return 1;
 		}
+		if (cnt > 0 && FD_ISSET(cnt, &fds)) {
+			if (control(cnt))
+				return 1;
+		}
 	}
 }
 
-pid_t launch(const char *path, int *r, int *w)
+pid_t launch(const char *path, int *r, int *w, int *c)
 {
-	int rd[2], wr[2];
+	int rd[2], wr[2], er[2];
 
 	if (pipe(rd) == -1) {
 		puts("pipe failed");
 		exit(1);
 	}
 	if (pipe(wr) == -1) {
+		puts("pipe failed");
+		exit(1);
+	}
+	if (pipe(er) == -1) {
 		puts("pipe failed");
 		exit(1);
 	}
@@ -108,9 +144,10 @@ pid_t launch(const char *path, int *r, int *w)
 		close(2);
 		close(rd[1]);
 		close(wr[0]);
+		close(er[0]);
 		dup2(rd[0], 0); // stdin
 		dup2(wr[1], 1); // stdout
-		dup2(wr[1], 2); // stderr
+		dup2(er[1], 2); // stderr
 		//
 		execl(path, path, NULL);
 		exit(1);
@@ -120,35 +157,37 @@ pid_t launch(const char *path, int *r, int *w)
 	// parent
 	close(rd[0]);
 	close(wr[1]);
+	close(er[1]);
 
 	*r = wr[0];	// read side of stdout
 	*w = rd[1];	// write side of stdin
+	*c = er[0];	// read side of stderr
 
 	return pid;
 }
 
 void run(const char *path, int r, int w)
 {
-	int in, out;
+	int in, out, cnt;
 
-	pid_t pid = launch(path, &in, &out);
+	pid_t pid = launch(path, &in, &out, &cnt);
 
-	shell(r, w, in, out);
+	shell(r, w, in, out, cnt);
 
 	kill(pid, SIGTERM);
 }
 
 void binary(const char *path, int nr, char **progs)
 {
-	int r, w;
+	int r, w, c;
 
-	pid_t pid = launch(path, &r, &w);
+	pid_t pid = launch(path, &r, &w, &c);
 
 	for (int i = 0; i < nr; i++)
 		run(progs[i], r, w);
 
 	puts(">>> interactive");
-	shell(r, w, 0, 1);
+	shell(r, w, 0, 1, -1);
 	puts("<<< done");
 
 	// kill child here
