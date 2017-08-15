@@ -4,6 +4,7 @@ CTFTOOLS
 tools
 -----
 - [rp++](https://github.com/0vercl0k/rp)
+- [radare2](https://github.com/radare/radare2)
 - [pedump](https://github.com/zed-0xff/pedump)
 - [qira](https://github.com/BinaryAnalysisPlatform/qira)
 - [Binary Analysis Platform](https://github.com/BinaryAnalysisPlatform/bap)
