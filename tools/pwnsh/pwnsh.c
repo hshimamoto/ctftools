@@ -3,6 +3,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/select.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <signal.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -197,10 +200,51 @@ void binary(const char *path, int nr, char **progs)
 	kill(pid, SIGKILL);
 }
 
-void netcat(const char *ip, int nr, char **progs)
+void netcat(const char *target, int nr, char **progs)
 {
-	puts("Not implemented yet");
-	exit(1);
+	const char *port = strchr(target, ':');
+
+	if (!port) {
+		printf("Bad target: %s\n", target);
+		exit(1);
+	}
+
+	int len = port - target;
+	char *addr = malloc(len);
+
+	memcpy(addr, target, len);
+	addr[len] = '\0';
+
+	++port;
+
+	// debug
+	printf("connecting to %s %d\n", addr, atoi(port));
+
+	struct sockaddr_in sa;
+
+	sa.sin_family = AF_INET;
+	sa.sin_addr.s_addr = inet_addr(addr);
+	sa.sin_port = htons(atoi(port));
+
+	int sock = socket(AF_INET, SOCK_STREAM, 0);
+
+	if (sock == -1) {
+		printf("Unable to create socket\n");
+		exit(1);
+	}
+
+	if (connect(sock, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
+		printf("Unable to connect\n");
+		exit(1);
+	}
+
+	// okay, go forward
+	for (int i = 0; i < nr; i++)
+		run(progs[i], sock, sock);
+
+	puts(">>> interactive");
+	shell(sock, sock, 0, 1, -1);
+	puts("<<< done");
 }
 
 int main(int argc, char **argv)
