@@ -8,3 +8,4 @@ CTF Tech
 - [peda拡張](https://github.com/miyagaw61/mgpeda)
 - [one-gadget RCE](https://kimiyuki.net/blog/2016/09/16/one-gadget-rce-ubuntu-1604/)
 - [CTF/Toolkit](https://wiki.mma.club.uec.ac.jp/CTF/Toolkit)
+- [Retargetable Decompiler](https://github.com/avast-tl/retdec)
